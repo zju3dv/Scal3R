@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scal3r"
+version = "0.1.0"
+description = "Isolated release workspace for SCAL3R"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "einops",
+    "huggingface_hub",
+    "numba",
+    "numpy",
+    "open3d",
+    "Pillow",
+    "pykitti",
+    "pypose",
+    "PyYAML",
+    "rich",
+    "scipy",
+    "torch",
+    "tqdm",
+    "torchvision",
+    "matplotlib",
+    "opencv-python",
+]
+
+[project.scripts]
+scal3r-run = "scal3r.run:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["scal3r*"]
+
+[tool.ruff]
+line-length = 100
+src = ["scal3r"]

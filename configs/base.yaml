@@ -1,0 +1,22 @@
+release:
+    name: scal3r_release_workspace
+
+model:
+    name: scal3r
+
+data:
+    image_patterns: "*.png,*.jpg,*.jpeg,*.bmp"
+    max_images: -1
+    preprocess_workers: 32
+    block_size: 60
+    overlap_size: 30
+    loop_size: 20
+    use_loop: 1
+    use_xyz_align: 0
+    save_dpt: 1
+    save_xyz: 1
+    loop_ckpt: "data/checkpoints/dino_salad.ckpt"
+    streaming_state: 0
+    offload_batches: 0
+    offload_outputs: 0
+    cleanup_offload: 1
