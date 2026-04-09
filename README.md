@@ -81,7 +81,7 @@ Important arguments:
 - `--tag`: controls the default output directory name when `--output_dir` is not set.
 - `--block_size` and `--overlap_size`: control chunking for long-sequence inference.
 - `--save_dpt` and `--save_xyz`: control whether depth maps and point clouds are exported.
-- `--offload_batches`, `--offload_outputs`, `--cleanup_offload`: control whether to offload batches and outputs to disk.
+- `--offload_batches`, `--offload_outputs`: control whether to offload batches and outputs to disk.
 
 By default, inference results are written to `data/result/custom/<tag>/`, and runtime artifacts are written to `data/result/custom/<tag>/runtime/`. The result directory typically contains:
 
