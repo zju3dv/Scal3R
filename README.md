@@ -21,7 +21,7 @@ Wei Hua<sup>3</sup>,
 <a href="https://xzhou.me/">Xiaowei Zhou</a><sup>1†</sup>
 <br>
 
-[![arXiv](https://img.shields.io/badge/arXiv-Paper-b31b1b?logo=arxiv&logoColor=b31b1b)](https://arxiv.org/abs/xxx)
+[![arXiv](https://img.shields.io/badge/arXiv-Paper-b31b1b?logo=arxiv&logoColor=b31b1b)](https://arxiv.org/abs/2604.08542)
 [![Safari](https://img.shields.io/badge/Project-Page-green?logo=safari&logoColor=fff)](https://zju3dv.github.io/scal3r)
 [![Hugging Face](https://img.shields.io/badge/HuggingFace-Checkpoint-yellow?logo=huggingface&logoColor=yellow)](https://huggingface.co/xbillowy/Scal3R)
 
@@ -104,10 +104,13 @@ This project builds on and benefits from several excellent open-source works, es
 ## Citation
 
 ```bibtex
-@inproceedings{xie2026scal3r,
-    title     = {Scal3R: Scalable Test-Time Training for Feed-forward Large-Scale 3D Reconstruction},
-    author    = {Xie, Tao and Yang, Peishan and Jin, Yudong and Cai, Yingfeng and Yin, Wei and Ren, Weiqiang and Zhang, Qian and Hua, Wei and Peng, Sida and Guo, Xiaoyang and Zhou, Xiaowei},
-    booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
-    year      = {2026}
+@misc{xie2026scal3rscalabletesttimetraining,
+      title={Scal3R: Scalable Test-Time Training for Large-Scale 3D Reconstruction}, 
+      author={Tao Xie and Peishan Yang and Yudong Jin and Yingfeng Cai and Wei Yin and Weiqiang Ren and Qian Zhang and Wei Hua and Sida Peng and Xiaoyang Guo and Xiaowei Zhou},
+      year={2026},
+      eprint={2604.08542},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2604.08542}, 
 }
 ```
