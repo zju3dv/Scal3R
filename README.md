@@ -9,7 +9,7 @@
 
 <a href="https://github.com/xbillowy">Tao Xie</a><sup>1,2</sup>,
 <a href="https://github.com/PeiPei233/">Peishan Yang</a><sup>1</sup>,
-<a href="https://github.com/krahets">Yudong Jin</a><sup>1</sup>,
+<a href="https://krahets.com/">Yudong Jin</a><sup>1</sup>,
 Yingfeng Cai<sup>2</sup>,
 <a href="https://yvanyin.xyz/">Wei Yin</a><sup>2</sup>,
 Weiqiang Ren<sup>2</sup>,
