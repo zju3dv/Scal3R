@@ -90,6 +90,7 @@ class MapProcessor:
         max_dpt_thres: float | None = None,
         max_align_points_per_frame: int | None = None,
         update: bool = True,
+        compute_constraint: bool = True,
     ):
         """ Adds a new submap to the optimizer and creates constraints with the previous submap,
         and optionally updates the current submap's pose based on the previous one.
@@ -102,6 +103,8 @@ class MapProcessor:
             file_name (str): Identifier for this submap
             update (bool): Whether to update the current submap's pose based on the previous one
             save_path (str): Path to save submap-related data
+            compute_constraint (bool): Whether to compute pairwise constraint with the previous submap.
+                Set to False when using align_submaps_parallel() afterwards.
         Returns:
             None
         """
@@ -133,7 +136,7 @@ class MapProcessor:
 
         # Add constraint with the previous submap if exists
         s, R, t = None, None, None
-        if self.n_submaps > 0:
+        if compute_constraint and self.n_submaps > 0:
             prev_submap = self.optimizer.get_submap(self.n_submaps - 1)
             # Add constraint between the previous submap and the current one
             s, R, t = self.add_constraint(prev_submap, curr_submap, update)
@@ -142,6 +145,70 @@ class MapProcessor:
         self.n_submaps += 1
 
         return s, R, t
+
+    def _align_pair(self, pair_index: int):
+        """Compute pairwise alignment between consecutive submaps (thread-safe)."""
+        prev = self.optimizer.get_submap(pair_index)
+        curr = self.optimizer.get_submap(pair_index + 1)
+
+        prev_xyz, curr_xyz, prev_cnf, curr_cnf = prev.find_overlap(curr)
+        if prev_xyz is None or curr_xyz is None:
+            return pair_index, None, None, None, None, None, None
+
+        aligner = PointCloudAligner(prev_xyz, curr_xyz, prev_cnf, curr_cnf)
+        if self.align_mode == "se3":
+            T, s, R, t = aligner.align_se3()
+        elif self.align_mode == "sim3":
+            T, s, R, t = aligner.align_sim3()
+        elif self.align_mode == "sim3_wet":
+            T, s, R, t = aligner.robust_weighted_align_sim3()
+        else:
+            raise ValueError(f"Invalid align mode: {self.align_mode}")
+        return pair_index, T, s, R, t, prev_xyz, curr_xyz
+
+    def align_submaps_parallel(self, max_workers: int | None = None):
+        """Compute all pairwise alignments between consecutive submaps in parallel.
+
+        Call this after adding all submaps with compute_constraint=False.
+        Uses ThreadPoolExecutor — NumPy BLAS operations release the GIL,
+        so threads achieve true parallelism for the heavy linear algebra.
+
+        Returns:
+            List of (s, R, t) tuples for each consecutive pair.
+        """
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        n = self.n_submaps
+        if n <= 1:
+            return []
+
+        n_pairs = n - 1
+        if max_workers is None:
+            max_workers = min(n_pairs, os.cpu_count() or 4)
+
+        results = [None] * n_pairs
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            futures = {
+                pool.submit(self._align_pair, i): i
+                for i in range(n_pairs)
+            }
+            for future in as_completed(futures):
+                idx, T, s, R, t, prev_xyz, curr_xyz = future.result()
+                results[idx] = (T, s, R, t, prev_xyz, curr_xyz)
+
+        # Sequential: accumulate global poses and store constraints
+        norm_track = []
+        for i, (T, s, R, t, prev_xyz, curr_xyz) in enumerate(results):
+            if T is not None:
+                self.optimizer.add_sim3_constraint(
+                    Sim3Constraint(i, i + 1, T, prev_xyz, curr_xyz)
+                )
+                prev = self.optimizer.get_submap(i)
+                curr = self.optimizer.get_submap(i + 1)
+                curr.global_pose = prev.global_pose @ T
+            norm_track.append((s, R, t))
+
+        return norm_track
 
     def add_loop_closure(self, prev_submap_id, curr_submap_id):
         # Retrieve the submaps by their IDs

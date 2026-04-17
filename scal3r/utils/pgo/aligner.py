@@ -1,5 +1,4 @@
 import numpy as np
-from numba import njit
 
 
 class PointCloudAligner:
@@ -107,8 +106,13 @@ class PointCloudAligner:
         # Compute the weights and mask the points
         src_xyz, tar_xyz, ini_wet = self.compute_weight(conf_thres)
 
+        # Pre-convert to float32 once (avoid repeated conversion in inner loop)
+        src_xyz = np.ascontiguousarray(src_xyz[:, :3], dtype=np.float32)
+        tar_xyz = np.ascontiguousarray(tar_xyz[:, :3], dtype=np.float32)
+        ini_wet = np.ascontiguousarray(ini_wet, dtype=np.float32)
+
         # Compute the initial transformation matrix
-        s, R, t = weighted_align_sim3_numba(
+        s, R, t = weighted_align_sim3(
             src_xyz, tar_xyz, ini_wet
         )  # scalar, (3, 3), (3,)
 
@@ -129,7 +133,7 @@ class PointCloudAligner:
             cur_wet = cur_wet / (np.sum(cur_wet) + 1e-12)  # (N,)
 
             # Update the transformation
-            s_, R_, t_ = weighted_align_sim3_numba(
+            s_, R_, t_ = weighted_align_sim3(
                 src_xyz, tar_xyz, cur_wet
             )  # scalar, (3, 3), (3,)
 
@@ -154,7 +158,7 @@ class PointCloudAligner:
             s, R, t = s_, R_, t_
 
         # Return the final transformation
-        T = np.eye(4, dtype=src_xyz.dtype)
+        T = np.eye(4, dtype=np.float32)
         T[:3, :3] = s * R
         T[:3,  3] = t
         return T, s, R, t
@@ -215,19 +219,21 @@ def _kabsch_rotation(src_xyz: np.ndarray, tar_xyz: np.ndarray, normalize: bool =
     return R, S, sign
 
 
-def weighted_align_sim3_numba(
+def weighted_align_sim3(
     src_xyz: np.ndarray,
     tar_xyz: np.ndarray,
     weights: np.ndarray,
 ):
-    """ Compute weighted Sim(3) transformation using Numba """
+    """ Compute weighted Sim(3) transformation.
+
+    Expects float32 inputs (caller should pre-convert).
+    """
     s, src_centroid, tar_centroid, H = _weighted_align_sim3(
         src_xyz, tar_xyz, weights
     )
     if s < 0:
         raise ValueError("Total weight too small for meaningful estimation")
 
-    H = H.astype(np.float32)
     U, _, Vt = np.linalg.svd(H.astype(np.float32))  # float32 SVD
     R = Vt.T @ U.T
     if np.linalg.det(R) < 0:
@@ -237,29 +243,22 @@ def weighted_align_sim3_numba(
     return s, R, t
 
 
-@njit(cache=True)
 def _weighted_align_sim3(
     src_xyz: np.ndarray,
     tar_xyz: np.ndarray,
     weights: np.ndarray,
 ):
-    # Ensure float32
-    src_xyz = src_xyz[:, :3].astype(np.float32)  # (N, 3)
-    tar_xyz = tar_xyz[:, :3].astype(np.float32)  # (N, 3)
-    weights = weights.astype(np.float32).copy()  # (N,)
-
     # Check if the weights are all zero
-    # If so, return the identity matrix
     wet_sum = np.sum(weights)
     if wet_sum < 1e-6:
         raise ValueError("Total weight too small for meaningful estimation")
 
     # Normalize the weights
-    weights = weights / wet_sum
+    w = weights / wet_sum
 
     # Compute the weighted centroids
-    src_centroid = np.sum(weights[:, None] * src_xyz, axis=0)  # (3,)
-    tar_centroid = np.sum(weights[:, None] * tar_xyz, axis=0)  # (3,)
+    src_centroid = np.sum(w[:, None] * src_xyz, axis=0)  # (3,)
+    tar_centroid = np.sum(w[:, None] * tar_xyz, axis=0)  # (3,)
 
     # Center the two set of points
     src_centered = src_xyz - src_centroid  # (N, 3)
@@ -267,65 +266,47 @@ def _weighted_align_sim3(
 
     # Compute the scale
     src_scale = np.sqrt(
-        np.sum(weights * np.sum(src_centered**2, axis=1))
+        np.sum(w * np.sum(src_centered**2, axis=1))
     )  # scalar
     tar_scale = np.sqrt(
-        np.sum(weights * np.sum(tar_centered**2, axis=1))
+        np.sum(w * np.sum(tar_centered**2, axis=1))
     )  # scalar
     s = tar_scale / src_scale  # scalar
 
     # Compute the weighted and scaled source and target point clouds
-    src_weighted = (s * src_centered) * np.sqrt(weights)[:, None]
-    tar_weighted = tar_centered * np.sqrt(weights)[:, None]
+    sqrt_w = np.sqrt(w)[:, None]
+    src_weighted = (s * src_centered) * sqrt_w
+    tar_weighted = tar_centered * sqrt_w
 
     # Compute the weighted cross-covariance matrix
     H = src_weighted.T @ tar_weighted
     return s, src_centroid, tar_centroid, H
 
 
-@njit(cache=True)
 def apply_transformation(
     xyz: np.ndarray,
     s: float, R: np.ndarray, t: np.ndarray
 ):
-    # Apply the transformation to the point cloud
-    new_xyz = np.empty_like(xyz)  # (N, 3)
-    for i in range(xyz.shape[0]):
-        new_xyz[i] = s * (R @ xyz[i]) + t
-    return new_xyz  # (N, 3)
+    return s * (xyz @ R.T) + t  # (N, 3)
 
 
-@njit(cache=True)
 def compute_residual(tar_xyz: np.ndarray, src_xyz: np.ndarray):
-    # Compute the residuals
-    resd = np.empty(tar_xyz.shape[0], dtype=np.float32)
-    for i in range(tar_xyz.shape[0]):
-        diff = tar_xyz[i] - src_xyz[i]
-        resd[i] = np.sqrt(np.sum(diff ** 2))
-    return resd  # (N,)
+    diff = tar_xyz - src_xyz
+    return np.sqrt(np.sum(diff * diff, axis=1)).astype(np.float32)  # (N,)
 
 
-@njit(cache=True)
 def compute_huber_weight(residual: np.ndarray, delta: float = 0.1):
-    # Compute the huber weights
-    weight = np.ones(residual.shape, dtype=np.float32)
-    for i in range(residual.shape[0]):
-        r = residual[i]
-        if r > delta:
-            weight[i] = delta / r
-    return weight  # (N,)
-
-
-@njit(cache=True)
-def huber_loss(residual: np.ndarray, delta: float = 0.1):
-    # Ensure float32
-    residual = residual.astype(np.float32)  # (N,)
-    delta = np.float32(delta)  # scalar
-    # Compute the huber loss
-    absr = np.abs(residual)  # (N,)
-    loss = np.where(
-        absr <= delta,
-        0.5 * residual ** 2,
-        delta * (absr - 0.5 * delta)
+    return np.where(
+        residual > delta, np.float32(delta) / residual, np.float32(1.0)
     ).astype(np.float32)  # (N,)
-    return loss.astype(np.float32)
+
+
+def huber_loss(residual: np.ndarray, delta: float = 0.1):
+    residual = residual.astype(np.float32)
+    delta = np.float32(delta)
+    absr = np.abs(residual)
+    return np.where(
+        absr <= delta,
+        np.float32(0.5) * residual ** 2,
+        delta * (absr - np.float32(0.5) * delta)
+    ).astype(np.float32)  # (N,)

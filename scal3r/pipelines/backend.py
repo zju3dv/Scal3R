@@ -456,26 +456,31 @@ def post_process(
 
     norm_track, loop_track = [], []
     n_blocks = len(batches) if n_blocks_loop == 0 else len(batches) - n_blocks_loop
-    pbar = tqdm(total=n_blocks, desc='Aligning adjacent blocks')
-    for b, batch_ref in enumerate(batches[:n_blocks]):
-        batch = materialize_payload(batch_ref)
+
+    # Phase 1: Create all submaps (mask computation + point filtering)
+    pbar = tqdm(total=n_blocks, desc='Preparing submaps')
+    for b in range(n_blocks):
+        batch = materialize_payload(batches[b])
         raw_block = materialize_payload(raw[b])
         xyz, dpt, cnf = prepare(batch, raw_block)
-        s, R, t = map_processor.add_submap(
+        map_processor.add_submap(
             xyz=xyz,
             dpt=dpt,
             cnf=cnf,
             msk=batch.msk[0].cpu().numpy(),
             file_name=batch.src_inds[0].cpu().numpy().tolist(),
-            update=True,
+            compute_constraint=False,
         )
-        if b > 0:
-            norm_track.append((s, R, t))
         del batch, raw_block, xyz, dpt, cnf
         if args.offload_batches or args.offload_outputs:
             release_memory(args.device)
         pbar.update()
     pbar.close()
+
+    # Phase 2: Parallel pairwise alignment (NumPy BLAS releases GIL)
+    n_workers = min(n_blocks - 1, os.cpu_count() or 4)
+    logger.info('Aligning %d adjacent block pairs in parallel (%d workers)', n_blocks - 1, n_workers)
+    norm_track = map_processor.align_submaps_parallel(max_workers=n_workers)
 
     if n_blocks_loop > 0:
         pbar = tqdm(total=n_blocks_loop, desc='Processing loop closure blocks')

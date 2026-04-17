@@ -87,3 +87,5 @@ diff*.html
 .vscode
 .planning-with-files
 .ruff_cache
+CLAUDE.md
+scripts/test

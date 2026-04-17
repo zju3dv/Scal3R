@@ -37,30 +37,28 @@ def solve_system_py(
     num_nodes = max(ii.max().item(), jj.max().item()) + 1
     res_vec = res.view(-1).numpy().astype(np.float64)
 
-    rows, cols, data = [], [], []
     ii_np = ii.numpy()
     jj_np = jj.numpy()
     J_Ginv_i_np = J_Ginv_i.numpy()
     J_Ginv_j_np = J_Ginv_j.numpy()
 
-    for edge in range(num_edges):
-        i = ii_np[edge]
-        j = jj_np[edge]
-        if i == j:
-            raise ValueError("Self-edges are not allowed")
+    # Vectorized sparse Jacobian construction
+    edge_idx = np.arange(num_edges)
+    # Row indices: each edge has a 7x7 block for i and a 7x7 block for j (49 entries each)
+    row_offsets = np.repeat(np.arange(7), 7)  # [0,0,...,0,1,1,...,1,...,6,6,...,6]
+    i_rows = np.repeat(edge_idx * 7, 49) + np.tile(row_offsets, num_edges)
 
-        for row in range(7):
-            for col in range(7):
-                row_idx = edge * 7 + row
-                rows.append(row_idx)
-                cols.append(i * 7 + col)
-                data.append(J_Ginv_i_np[edge, row, col])
+    # Column indices
+    col_offsets = np.tile(np.arange(7), 7)  # [0,1,...,6,0,1,...,6,...,0,1,...,6]
+    i_cols = np.repeat(ii_np * 7, 49) + np.tile(col_offsets, num_edges)
+    j_cols = np.repeat(jj_np * 7, 49) + np.tile(col_offsets, num_edges)
 
-                rows.append(row_idx)
-                cols.append(j * 7 + col)
-                data.append(J_Ginv_j_np[edge, row, col])
+    # Stack i-block and j-block
+    all_rows = np.concatenate([i_rows, i_rows])
+    all_cols = np.concatenate([i_cols, j_cols])
+    all_data = np.concatenate([J_Ginv_i_np.reshape(-1), J_Ginv_j_np.reshape(-1)])
 
-    J = coo_matrix((data, (rows, cols)), shape=(num_edges * 7, num_nodes * 7)).tocsc()
+    J = coo_matrix((all_data, (all_rows, all_cols)), shape=(num_edges * 7, num_nodes * 7)).tocsc()
     b_vec = -J.T @ res_vec
     A_mat = J.T @ J
     diag = A_mat.diagonal()
