@@ -1,7 +1,7 @@
 <div align="center">
 
 <h1>
-  <img src="assets/logo.png" alt="Scal3R logo" width="42" style="vertical-align: -0.18em; margin-right: 0.12em;">
+  <img src="assets/logo.png" alt="Scal3R logo" width="42" style="vertical-align: -0.45em; margin-right: 0.12em;">
   Scal3R: Scalable Test-Time Training for Large-Scale 3D Reconstruction
 </h1>
 
