@@ -29,9 +29,10 @@ Wei Hua<sup>3</sup>,
 
 ***News***
 
-- [2026-04-17] Inference acceleration is enabled.
-- [2026-04-10] The inference code is released.
-- [2026-04-10] [Scal3R](https://zju3dv.github.io/scal3r/) has been selected as a highlight paper for CVPR 2026.
+- 2026-04-23: Release point cloud and camera pose visualization tools.
+- 2026-04-17: Inference acceleration is enabled.
+- 2026-04-10: The inference code is released.
+- 2026-04-10: [Scal3R](https://zju3dv.github.io/scal3r/) has been selected as a highlight paper for CVPR 2026.
 
 <p align="center">
   <img src="assets/teaser.gif" alt="Scal3R default teaser" width="100%">
