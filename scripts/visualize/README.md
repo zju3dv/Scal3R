@@ -1,8 +1,8 @@
-## Visualization Tools
+# Visualization Tools
 
 Geometry-related visualization scripts for [Scal3R](https://github.com/zju3dv/Scal3R). We release these scripts for public use, hope they are helpful for your research.
 
-### Installation
+## Installation
 
 Run the following commands from the repository root:
 
@@ -14,7 +14,7 @@ Extra system tools:
 
 - `ffmpeg` for MP4 export
 
-### Before You Start
+## Before You Start
 
 The only question that really matters is this:
 
@@ -30,7 +30,7 @@ Pose files are plain-text OpenCV-style camera-to-world matrices:
 - `N x 16` for flattened `4 x 4`
 - `N x 12` for flattened `3 x 4`
 
-### Choose A Script
+## Choose A Script
 
 | Need | Script |
 | --- | --- |
@@ -41,7 +41,7 @@ Pose files are plain-text OpenCV-style camera-to-world matrices:
 
 Other helper scripts are kept in `geometry/utils` and `tools`. If you need alignment, frame compositing, PLY downsampling, or pose-only camera visualization, check those folders directly.
 
-### Core Usage
+## Core Usage
 
 #### `render_points.py`
 
@@ -102,7 +102,7 @@ Hotkeys:
 - `P`: preview the interpolated path
 - `O`: export the interpolated path
 
-### Demo Pipeline
+## Demo Pipeline
 
 The demo-style geometry video is built in stages, not in one render pass:
 
@@ -139,7 +139,7 @@ python scripts/visualize/tools/images_to_video.py \
     data/result/custom/demo/visualize/combo.mp4
 ```
 
-### Notes
+## Notes
 
 - `render_cameras.py` and `render_scene_from_viewpoints.py` expect a `viewpoint_config.json` produced by `render_points.py` or `open3d_viewer.py`.
 - `render_cameras.py` can optionally render textured camera quads with `--camera_image_dir`.
