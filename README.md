@@ -1,9 +1,5 @@
 <div align="center">
 
-<p>
-  <img src="assets/logo.png" alt="Scal3R logo" width="42">
-</p>
-
 <h1>Scal3R: Scalable Test-Time Training for Large-Scale 3D Reconstruction</h1>
 
 ### CVPR 2026 Highlight
