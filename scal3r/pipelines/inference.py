@@ -26,6 +26,7 @@ class InferenceRequest:
     use_loop: int | None = None
     use_xyz_align: int | None = None
     max_align_points_per_frame: int | None = None
+    pgo_workers: int | None = None
     test_use_amp: bool = False
     save_dpt: int | None = None
     save_xyz: int | None = None
@@ -96,6 +97,8 @@ def run_inference(config: dict[str, Any], request: InferenceRequest) -> dict[str
         str(request.use_loop if request.use_loop is not None else data_cfg.get("use_loop", 1)),
         "--use_xyz_align",
         str(request.use_xyz_align if request.use_xyz_align is not None else data_cfg.get("use_xyz_align", 0)),
+        "--pgo_workers",
+        str(request.pgo_workers if request.pgo_workers is not None else data_cfg.get("pgo_workers", 32)),
         "--save_dpt",
         str(request.save_dpt if request.save_dpt is not None else data_cfg.get("save_dpt", 1)),
         "--save_xyz",
@@ -151,6 +154,7 @@ def run_inference(config: dict[str, Any], request: InferenceRequest) -> dict[str
         "use_loop": request.use_loop if request.use_loop is not None else data_cfg.get("use_loop", 1),
         "use_xyz_align": request.use_xyz_align if request.use_xyz_align is not None else data_cfg.get("use_xyz_align", 0),
         "max_align_points_per_frame": max_align_points_per_frame,
+        "pgo_workers": request.pgo_workers if request.pgo_workers is not None else data_cfg.get("pgo_workers", 32),
         "save_dpt": request.save_dpt if request.save_dpt is not None else data_cfg.get("save_dpt", 1),
         "save_xyz": request.save_xyz if request.save_xyz is not None else data_cfg.get("save_xyz", 1),
         "streaming_state": request.streaming_state if request.streaming_state is not None else data_cfg.get("streaming_state", 0),

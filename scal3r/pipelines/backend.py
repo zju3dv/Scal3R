@@ -1,3 +1,4 @@
+import gc
 import os
 import torch
 import argparse
@@ -41,6 +42,7 @@ def format_runtime_config(args) -> list[str]:
         f"use_loop: {bool(args.use_loop)}",
         f"preprocess_workers: {int(args.preprocess_workers)}",
         f"max_align_points_per_frame: {args.max_align_points_per_frame}",
+        f"pgo_workers: {int(args.pgo_workers)}",
         f"save_dpt: {bool(args.save_dpt)}",
         f"save_xyz: {bool(args.save_xyz)}",
         f"streaming_state: {bool(args.streaming_state)}",
@@ -478,8 +480,12 @@ def post_process(
     pbar.close()
 
     # Phase 2: Parallel pairwise alignment (NumPy BLAS releases GIL)
-    n_workers = min(n_blocks - 1, os.cpu_count() or 4)
-    logger.info('Aligning %d adjacent block pairs in parallel (%d workers)', n_blocks - 1, n_workers)
+    n_pairs = max(0, n_blocks - 1)
+    if args.pgo_workers > 0:
+        n_workers = min(n_pairs, args.pgo_workers)
+    else:
+        n_workers = min(n_pairs, os.cpu_count() or 4)
+    logger.info('Aligning %d adjacent block pairs in parallel (%d workers)', n_pairs, n_workers)
     norm_track = map_processor.align_submaps_parallel(max_workers=n_workers)
 
     if n_blocks_loop > 0:
@@ -532,6 +538,7 @@ def post_process(
             del batch0, batch1, batch2
             del raw0, raw1, raw2
             del xyz0, xyz1, xyz2, dpt0, dpt1, dpt2, cnf0, cnf1, cnf2
+            del processor0, processor2
             if args.offload_batches or args.offload_outputs:
                 release_memory(args.device)
             pbar.update()
@@ -549,6 +556,9 @@ def post_process(
         indices = indices[:n_blocks]
     else:
         res_track = [map_processor.optimizer.get_submap(i).global_pose for i in range(len(batches))]
+
+    del map_processor
+    gc.collect()
 
     overlap_prev_inds, overlap_curr_inds = [], []
     for b, batch_ref in enumerate(batches):
@@ -668,6 +678,7 @@ def parse_args():
     parser.add_argument('--loop_ckpt', type=str, default='data/checkpoints/dino_salad.ckpt', help='Optional SALAD loop-detector checkpoint path; fallback loop detection is used when omitted')
     parser.add_argument('--use_xyz_align', type=int, default=0, help='Whether to align chunks using predicted xyz')
     parser.add_argument('--max_align_points_per_frame', type=int, default=None, help='Optional per-overlap-frame point cap for PGO alignment. None keeps all points.')
+    parser.add_argument('--pgo_workers', type=int, default=32, help='Number of workers for adjacent-block PGO alignment. Use 0 for auto.')
     parser.add_argument('--test_use_amp', action='store_true', help='Whether to use AMP during inference')
     parser.add_argument('--save_dpt', type=int, default=1, help='Whether to save predicted depth maps')
     parser.add_argument('--save_xyz', type=int, default=1, help='Whether to save predicted point clouds')

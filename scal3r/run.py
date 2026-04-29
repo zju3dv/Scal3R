@@ -59,6 +59,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=-1,
         help="Optional per-overlap-frame point cap for PGO alignment. Negative keeps config/default behavior.",
     )
+    parser.add_argument(
+        "--pgo_workers",
+        type=int,
+        default=-1,
+        help="Optional worker count for adjacent-block PGO alignment. Negative keeps config/default behavior; 0 uses auto.",
+    )
     parser.add_argument("--test_use_amp", action="store_true", help="Enable AMP during inference.")
     parser.add_argument("--save_dpt", type=int, default=-1, help="Optional depth-save override.")
     parser.add_argument("--save_xyz", type=int, default=-1, help="Optional point-save override.")
@@ -109,6 +115,7 @@ def main() -> int:
         use_loop=args.use_loop if args.use_loop >= 0 else None,
         use_xyz_align=args.use_xyz_align if args.use_xyz_align >= 0 else None,
         max_align_points_per_frame=args.max_align_points_per_frame if args.max_align_points_per_frame >= 0 else None,
+        pgo_workers=args.pgo_workers if args.pgo_workers >= 0 else None,
         test_use_amp=args.test_use_amp,
         save_dpt=args.save_dpt if args.save_dpt >= 0 else None,
         save_xyz=args.save_xyz if args.save_xyz >= 0 else None,

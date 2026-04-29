@@ -13,6 +13,7 @@ data:
     loop_size: 20
     use_loop: 1
     use_xyz_align: 0
+    pgo_workers: 32
     save_dpt: 1
     save_xyz: 1
     loop_ckpt: "data/checkpoints/dino_salad.ckpt"

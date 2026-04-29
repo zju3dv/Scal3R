@@ -4,12 +4,8 @@ class Sim3Constraint:
         self,
         submap_id1,
         submap_id2,
-        sim3_matrix,
-        overlap1,
-        overlap2
+        sim3_matrix
     ):
         self.submap_id1 = submap_id1
         self.submap_id2 = submap_id2
-        self.overlap1 = overlap1
-        self.overlap2 = overlap2
         self.sim3 = sim3_matrix

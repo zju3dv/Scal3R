@@ -65,10 +65,9 @@ class MapProcessor:
                 prev_submap.submap_id,
                 curr_submap.submap_id,
                 T_curr_to_prev,
-                prev_xyz,
-                curr_xyz
             )
         )
+        del prev_xyz, curr_xyz, prev_cnf, curr_cnf, aligner
 
         # If update is True, update the current submap's pose based on the previous one
         # NOTE: the global pose is c2w
@@ -153,7 +152,7 @@ class MapProcessor:
 
         prev_xyz, curr_xyz, prev_cnf, curr_cnf = prev.find_overlap(curr)
         if prev_xyz is None or curr_xyz is None:
-            return pair_index, None, None, None, None, None, None
+            return pair_index, None, None, None, None
 
         aligner = PointCloudAligner(prev_xyz, curr_xyz, prev_cnf, curr_cnf)
         if self.align_mode == "se3":
@@ -164,7 +163,8 @@ class MapProcessor:
             T, s, R, t = aligner.robust_weighted_align_sim3()
         else:
             raise ValueError(f"Invalid align mode: {self.align_mode}")
-        return pair_index, T, s, R, t, prev_xyz, curr_xyz
+        del prev_xyz, curr_xyz, prev_cnf, curr_cnf, aligner
+        return pair_index, T, s, R, t
 
     def align_submaps_parallel(self, max_workers: int | None = None):
         """Compute all pairwise alignments between consecutive submaps in parallel.
@@ -193,15 +193,15 @@ class MapProcessor:
                 for i in range(n_pairs)
             }
             for future in as_completed(futures):
-                idx, T, s, R, t, prev_xyz, curr_xyz = future.result()
-                results[idx] = (T, s, R, t, prev_xyz, curr_xyz)
+                idx, T, s, R, t = future.result()
+                results[idx] = (T, s, R, t)
 
         # Sequential: accumulate global poses and store constraints
         norm_track = []
-        for i, (T, s, R, t, prev_xyz, curr_xyz) in enumerate(results):
+        for i, (T, s, R, t) in enumerate(results):
             if T is not None:
                 self.optimizer.add_sim3_constraint(
-                    Sim3Constraint(i, i + 1, T, prev_xyz, curr_xyz)
+                    Sim3Constraint(i, i + 1, T)
                 )
                 prev = self.optimizer.get_submap(i)
                 curr = self.optimizer.get_submap(i + 1)
